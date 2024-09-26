@@ -1,129 +1,3 @@
-// import axios from "axios";
-// import * as cheerio from "cheerio";
-// import cron from "node-cron";
-// import fs from "fs";
-// import path from "path";
-// import { WebSocketServer } from "ws";
-// import express, { Request } from "express";
-// import rateLimit from "express-rate-limit";
-// import { createHash } from "crypto";
-// import dotenv from "dotenv";
-// import winston from "winston";
-// import { IncomingMessage } from "http";
-// dotenv.config();
-
-// // Constants
-// const url = "http://api.chatwars.me/webview/map";
-// const logFilePath = path.join(__dirname, "log.txt");
-// const recordedEntries = new Set<string>();
-
-// // Env
-// const PORT = 8080;
-// const AUTH_TOKEN = process.env.WS_AUTH_TOKEN;
-
-// // Logger
-// const formats = winston.format;
-// const { timestamp, prettyPrint, errors, json } = formats;
-
-// const logger = winston.createLogger({
-//   level: "info",
-//   format: formats.combine(errors({ stack: true }), timestamp(), json()),
-//   transports: [
-//     new winston.transports.File({
-//       filename: "ws.log",
-//     }),
-//   ],
-// });
-
-// if (process.env.NODE_ENV !== "production") {
-//   logger.add(
-//     new winston.transports.Console({
-//       format: winston.format.simple(),
-//     })
-//   );
-// }
-
-// // Express app for websocket
-// const app = express();
-// const server = app.listen(PORT, () => {
-//   logger.info(`WebSocket server running on ws://localhost:${PORT}`);
-// });
-
-// // Rate Limit
-
-// const apiLimiter = rateLimit({
-//   windowMs: 15 * 60 * 1000,
-//   limit: 100,
-//   message: "Too many request, plase try again later",
-// });
-
-// app.use("/api/", apiLimiter);
-
-// const wss = new WebSocketServer({ port: PORT });
-
-// wss.on("connection", (ws, req) => {
-//   if (!isValidClient(req)) {
-//     ws.close(1008, "Unauthorized");
-//     return;
-//   }
-
-//   logger.info("New client connected");
-//   ws.send("Connected to the notification service!");
-
-//   ws.on("close", () => {
-//     logger.info("Client disconnected");
-//   });
-// });
-
-// async function checkForNewEntries() {
-//   try {
-//     const response = await axios.get(url);
-//     const $ = cheerio.load(response.data);
-
-//     $(".map-cell").each((_, element) => {
-//       const bottomLeftText = $(element).find(".bottom-left-text").text();
-//       const bottomRightText = $(element).find(".bottom-right-text").text();
-//       const topRightText = $(element).find(".top-right-text").text().trim();
-//       const location = `${bottomRightText}${topRightText}`;
-
-//       if (bottomLeftText.includes("⚔️")) {
-//         if (!recordedEntries.has(location)) {
-//           logger.info(`New ⚔️ detected at location: ${location}`);
-//           recordedEntries.add(location);
-
-//           wss.clients.forEach((client) => {
-//             if (client.readyState === client.OPEN) {
-//               client.send(`New ⚔️ detected at location: ${location}`);
-//             }
-//           });
-//         }
-//       } else {
-//         if (recordedEntries.has(location)) {
-//           recordedEntries.delete(location);
-//         }
-//       }
-//     });
-//   } catch (error: unknown) {
-//     if (error instanceof Error) {
-//       logger.error(`Error fetching the page: ${error.message}`);
-//     } else {
-//       logger.crit(`An unknown error occurred: ${JSON.stringify(error)}`);
-//     }
-//   }
-// }
-
-// function isValidClient(req: IncomingMessage): boolean {
-//   const token = req.headers["sec-websocket-protocol"];
-//   return token === AUTH_TOKEN;
-// }
-
-// cron.schedule("* * * * *", () => {
-//   logger.info("Checking for new entries...");
-//   checkForNewEntries();
-// });
-
-// console.log("WebSocket server running on ws://localhost:8080");
-
 import axios from "axios";
 import * as cheerio from "cheerio";
 import cron from "node-cron";
@@ -155,18 +29,13 @@ const { timestamp, errors, json } = formats;
 const logger = winston.createLogger({
   level: "info",
   format: formats.combine(errors({ stack: true }), timestamp(), json()),
-  transports: [
-    new winston.transports.File({
-      filename: "ws.log",
-    }),
-  ],
 });
 
 if (process.env.NODE_ENV !== "production") {
   logger.add(
     new winston.transports.Console({
       format: formats.combine(formats.colorize(), formats.simple()),
-    })
+    }),
   );
 }
 
@@ -190,7 +59,7 @@ function isRateLimit(ws: WebSocket): boolean {
   let timestamps = rateLimitMap.get(ws) || [];
 
   timestamps = timestamps.filter(
-    (timestamp) => now - timestamp < 15 * 60 * 1000
+    (timestamp) => now - timestamp < 15 * 60 * 1000,
   );
 
   if (timestamps.length >= 100) {
@@ -217,6 +86,7 @@ wss.on("connection", (ws, req) => {
       logger.warn("Rate limit exceeded for client");
       ws.send("Rate limit exceeded. Try again later.");
     }
+    return;
   });
 
   logger.info("New client connected");
@@ -260,7 +130,7 @@ async function checkForNewEntries() {
     logger.error(
       `Error fetching the page: ${
         error instanceof Error ? error.message : JSON.stringify(error)
-      }`
+      }`,
     );
   }
 }
