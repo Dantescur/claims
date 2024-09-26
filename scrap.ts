@@ -7,6 +7,7 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import winston from "winston";
 import { IncomingMessage } from "http";
+import moment from "moment";
 
 // Load environment variables
 dotenv.config();
@@ -24,17 +25,28 @@ if (!AUTH_TOKEN) {
 
 // Logger setup
 const formats = winston.format;
-const { timestamp, errors, json } = formats;
+const { timestamp, errors, json, printf } = formats;
 
 const logger = winston.createLogger({
   level: "info",
-  format: formats.combine(errors({ stack: true }), timestamp(), json()),
+  format: formats.combine(
+    errors({ stack: true }),
+    timestamp({
+      format: () => moment().format("DD-MM-YYYY HH:mm:ss"),
+    }),
+    json(),
+  ),
 });
 
 if (process.env.NODE_ENV !== "production") {
   logger.add(
     new winston.transports.Console({
-      format: formats.combine(formats.colorize(), formats.simple()),
+      format: formats.combine(
+        formats.colorize(),
+        printf(({ level, message, timestamp, stack }) => {
+          return `${timestamp} [${level}]: ${stack || message}`;
+        }),
+      ),
     }),
   );
 }
